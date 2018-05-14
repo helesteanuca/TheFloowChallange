@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/PlatformJob/PlatformJob.iml" filepath="$PROJECT_DIR$/PlatformJob/PlatformJob.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/TheFloowChallange.iml" filepath="$PROJECT_DIR$/.idea/TheFloowChallange.iml" />
+    </modules>
+  </component>
+</project>
