@@ -1,20 +1,22 @@
 package com.platform.database;
 
 import com.mongodb.BasicDBObject;
-import com.mongodb.DBObject;
 import com.mongodb.Mongo;
 import com.mongodb.MongoClient;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.gridfs.GridFSBucket;
+import com.mongodb.client.gridfs.GridFSBuckets;
+import com.mongodb.client.gridfs.model.GridFSUploadOptions;
 import com.mongodb.gridfs.GridFS;
-import com.mongodb.gridfs.GridFSDBFile;
-import com.mongodb.gridfs.GridFSFile;
 import com.mongodb.gridfs.GridFSInputFile;
 import com.platform.util.Configuration;
+import org.bson.Document;
+import org.bson.types.ObjectId;
 
 import java.io.File;
-import java.io.IOException;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -63,23 +65,19 @@ public class ConnectionManager implements DBConfiguration{
     public static boolean uploadFile(File uploadJobFile)
     {
         try(MongoClient client = new MongoClient("127.0.0.1", 27017)){
+            GridFSBucket gridFSFilesBucket = GridFSBuckets.create(client.getDatabase("TheFloow"), "Jobs");
+            InputStream streamToUploadFrom = new FileInputStream(uploadJobFile);
+            // Create some custom options
+            GridFSUploadOptions options = new GridFSUploadOptions()
+                    .chunkSizeBytes(358400)
+                    .metadata(new Document("type", "text"));
 
-            GridFS gridFS = new GridFS(client.getDB("TheFloow"),"Jobs");
-            GridFSInputFile gridFSInputFile = gridFS.createFile(uploadJobFile.getAbsolutePath());
-            gridFSInputFile.setContentType("text/plain");
-
-            DBObject metadata = gridFSInputFile.getMetaData();
-            if(metadata==null)
-            {
-                metadata = new BasicDBObject();
-                gridFSInputFile.setMetaData(metadata);
-            }
-            metadata.put("processing",false);
-            metadata.put("processer","none");
-            metadata.put("failed",0);
-            metadata.put("startedTime",new Date());
-            gridFSInputFile.save();
+            ObjectId fileId = gridFSFilesBucket.uploadFromStream("mongodb-tutorial", streamToUploadFrom, options);
+            System.out.println(fileId);
             return true;
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            return false;
         }
     }
 }

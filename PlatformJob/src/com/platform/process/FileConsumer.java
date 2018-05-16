@@ -21,7 +21,7 @@ public class FileConsumer implements Runnable {
 
             String line;
             int i = 0;
-            File tmp = File.createTempFile(new File(fileName).getName()+"-"+i,".txt");
+            File tmp = File.createTempFile(new File(fileName).getName()+"-"+i+"-",".txt");
 
             while((line=rdr.readLine())!=null)
             {
@@ -29,10 +29,10 @@ public class FileConsumer implements Runnable {
                     ConnectionManager.uploadFile(tmp);
                     tmp.delete();
                     ++i;
-                    tmp = File.createTempFile(new File(fileName).getName()+"-"+i,".txt");
+                    tmp = File.createTempFile(new File(fileName).getName()+"-"+i+"-",".txt");
                 }
                 try(BufferedWriter wrt = new BufferedWriter(new FileWriter(tmp))) {
-                        wrt.write(line);
+                        wrt.append(line);
                 }
             }
 
