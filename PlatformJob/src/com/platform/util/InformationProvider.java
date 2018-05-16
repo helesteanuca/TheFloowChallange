@@ -18,11 +18,12 @@ import java.util.Date;
 public class InformationProvider {
 
     ///Only used for text typing
-    private final String endLine = "\n";
-    private final DateFormat dateFormat = new SimpleDateFormat("[YYYY/MM/dd][HH:mm:ss]");
+    private static final String END_LINE = "\n";
+    private final DateFormat dateFormat = new SimpleDateFormat("[yyyy/MM/dd][HH:mm:ss]");
 
     ///Used for creating the log file in a relational position with the ran
     private final String workingDir = System.getProperty("user.dir");
+    private Configuration.LOGMETHOD logMethod = Configuration.LOGMETHOD.CONSOLE;
 
     ///Supports 3 type of messages
     enum MSGTYPE{
@@ -48,28 +49,35 @@ public class InformationProvider {
     private BufferedWriter logFile = null;
 
     ///Empty constructor for no output to file : system.out as default output
-    public InformationProvider()
+    public InformationProvider(Configuration.LOGMETHOD estLogMethod)
     {
-
+        this.logMethod = estLogMethod;
     }
 
     ///Constructor with a log file output
     public InformationProvider(String fileName)
     {
         boolean succLog = initiateLogFileWriter(fileName);
+        if(!succLog) {
+            error("Problem in initiating logfile: " + fileName + ". Defaulted to console output!");
+            logMethod = Configuration.LOGMETHOD.CONSOLE;
+        }
+        else
+            info("Successful initiated logfile");
 
     }
 
     private boolean initiateLogFileWriter(String fileName)
     {
         timeEvent = new Date();
-        DateFormat aod = new SimpleDateFormat("YYYYMMdd.HH.mm");
+        DateFormat aod = new SimpleDateFormat("yyyyMMdd.HH.mm");
         try{
-            File logg = new File(workingDir+"/logs/fileName."+ aod.format(timeEvent)+".log");
-            if(!logg.exists())
-                logg.createNewFile();
-            logFile = new BufferedWriter(new PrintWriter(logg));
-            return true;
+            File logF = new File(workingDir+"/logs/"+fileName + aod.format(timeEvent)+".log");
+            if(!logF.exists() && logF.createNewFile()) {
+                logFile = new BufferedWriter(new PrintWriter(logF));
+                return true;
+            }
+            return false;
         }
         catch(IOException ex)
         {
@@ -96,7 +104,15 @@ public class InformationProvider {
     private void inform(MSGTYPE type, String message)
     {
         timeEvent = new Date();
-        String finMsg = type.getPrefix()+dateFormat.format(timeEvent)+message+endLine;
+        String finMsg = type.getPrefix()+dateFormat.format(timeEvent)+message+ END_LINE;
+        switch (this.logMethod)
+        {
+            case ALL: informFile(finMsg); informConsole(finMsg); break;
+            case FILE: informFile(finMsg); break;
+            case CONSOLE: informConsole(finMsg); break;
+            case NONE: break;
+            default : informConsole(finMsg); break;
+        }
     }
 
     private void informFile(String finalMsg)
@@ -109,13 +125,18 @@ public class InformationProvider {
         }
         catch(IOException ex)
         {
-
+            error("Problem writing log to logfile. LOG: "+finalMsg+ END_LINE +ex);
         }
     }
 
     private void informConsole(String finalMsg)
     {
         System.out.print(finalMsg);
+    }
+
+    public static void printHelp()
+    {
+        System.out.println();
     }
 
 }

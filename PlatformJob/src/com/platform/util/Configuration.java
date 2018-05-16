@@ -1,5 +1,6 @@
 package com.platform.util;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -16,15 +17,38 @@ import java.util.Map;
 public class Configuration {
     private Map<String,String> param = new HashMap<>();
     private final String[] mandatoryKeys ={"source", "mongo"};
+    public InformationProvider log;
+
+    enum LOGMETHOD{CONSOLE,FILE,ALL,NONE}
 
     public Configuration(String[] listParam)
     {
-
+        for(int i = 0; i < listParam.length; ++i)
+        {
+            if(listParam[i].contains("-")) {
+                param.put(listParam[i].replace("-",""), listParam[i + 1]);
+            }
+            ++i;
+        }
+        validateParams();
     }
 
-    public Configuration(Map<String,String> params)
+    private void validateParams()
     {
-        param.putAll(params);
+        for(Map.Entry<String,String> set : param.entrySet())
+        {
+            if(set.getKey().equals("log"))
+            {
+                switch(set.getValue())
+                {
+                    case "console": this.log = new InformationProvider(LOGMETHOD.CONSOLE); break;
+                    case "file": this.log = new InformationProvider("TheFloow"); break;
+                    case "all": this.log = new InformationProvider(LOGMETHOD.ALL); break;
+                    case "none": this.log = new InformationProvider(LOGMETHOD.NONE); break;
+                    default: System.out.println("Invalid parameter for -log."); break;
+                }
+            }
+        }
     }
 
     public String getValue(String key)
