@@ -1,14 +1,11 @@
 package com.platform.database;
 
-import com.mongodb.BasicDBObject;
 import com.mongodb.Mongo;
 import com.mongodb.MongoClient;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.gridfs.GridFSBucket;
 import com.mongodb.client.gridfs.GridFSBuckets;
 import com.mongodb.client.gridfs.model.GridFSUploadOptions;
-import com.mongodb.gridfs.GridFS;
-import com.mongodb.gridfs.GridFSInputFile;
 import com.platform.util.Configuration;
 import org.bson.Document;
 import org.bson.types.ObjectId;
@@ -26,15 +23,24 @@ import java.util.function.Consumer;
  * *****************************************************
  * Project: TheFloow
  * Date: 15/05/2018
- * File: ${CLASS}
- * Version: ${EDITS}
+ * File: ConnectionManager
+ * Version: 3
  * *****************************************************
  * Description:
  * *****************************************************
  */
 public class ConnectionManager implements DBConfiguration{
-    private static Mongo dbConn;
+
     private Configuration cfg;
+    private static String host = "localhost";
+    private static int port = 27017;
+
+    public ConnectionManager(Configuration exCfg)
+    {
+        this.cfg = exCfg;
+        host = cfg.getValue("mongo").split(":")[0];
+        port = Integer.parseInt(cfg.getValue("mongo").split(":")[1]);
+    }
 
 
     @Override
@@ -50,7 +56,7 @@ public class ConnectionManager implements DBConfiguration{
     @Override
     public boolean prepareDataBase() {
 
-        try (MongoClient mongoClient = new MongoClient("127.0.0.1", 27017)) {
+        try (MongoClient mongoClient = new MongoClient(host, port)) {
 
             MongoDatabase db = mongoClient.getDatabase("TheFloow");
 
@@ -67,12 +73,12 @@ public class ConnectionManager implements DBConfiguration{
         try(MongoClient client = new MongoClient("127.0.0.1", 27017)){
             GridFSBucket gridFSFilesBucket = GridFSBuckets.create(client.getDatabase("TheFloow"), "Jobs");
             InputStream streamToUploadFrom = new FileInputStream(uploadJobFile);
-            // Create some custom options
+
             GridFSUploadOptions options = new GridFSUploadOptions()
                     .chunkSizeBytes(358400)
-                    .metadata(new Document("type", "text"));
+                    .metadata(new Document("type", "text").append("processing",false).append("processer","none").append("timeStart",new Date()).append("failed",0));
 
-            ObjectId fileId = gridFSFilesBucket.uploadFromStream("mongodb-tutorial", streamToUploadFrom, options);
+            ObjectId fileId = gridFSFilesBucket.uploadFromStream(uploadJobFile.getName(), streamToUploadFrom, options);
             System.out.println(fileId);
             return true;
         } catch (FileNotFoundException e) {

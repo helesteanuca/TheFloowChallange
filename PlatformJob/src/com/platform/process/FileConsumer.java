@@ -22,20 +22,22 @@ public class FileConsumer implements Runnable {
             String line;
             int i = 0;
             File tmp = File.createTempFile(new File(fileName).getName()+"-"+i+"-",".txt");
+            BufferedWriter wrt = new BufferedWriter(new FileWriter(tmp));
 
             while((line=rdr.readLine())!=null)
             {
                 if(!(tmp.length()<536870912)) {
+                    wrt.close();
                     ConnectionManager.uploadFile(tmp);
                     tmp.delete();
                     ++i;
                     tmp = File.createTempFile(new File(fileName).getName()+"-"+i+"-",".txt");
+                    wrt = new BufferedWriter(new FileWriter(tmp));
                 }
-                try(BufferedWriter wrt = new BufferedWriter(new FileWriter(tmp))) {
-                        wrt.append(line);
-                }
-            }
 
+                wrt.append(line);
+            }
+            wrt.close();
             ConnectionManager.uploadFile(tmp);
             tmp.delete();
         } catch (FileNotFoundException e) {
