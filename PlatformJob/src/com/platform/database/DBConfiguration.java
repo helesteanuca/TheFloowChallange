@@ -12,6 +12,5 @@ package com.platform.database;
  */
 public interface DBConfiguration {
     boolean prepareCollections();
-    boolean testConnection(String hostname,String port);
     boolean prepareDataBase();
 }

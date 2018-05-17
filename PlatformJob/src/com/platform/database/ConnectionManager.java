@@ -1,7 +1,5 @@
 package com.platform.database;
 
-
-import com.mongodb.Block;
 import com.mongodb.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
@@ -9,13 +7,13 @@ import com.mongodb.client.gridfs.GridFSBucket;
 import com.mongodb.client.gridfs.GridFSBuckets;
 import com.mongodb.client.gridfs.model.GridFSUploadOptions;
 import com.mongodb.client.model.UpdateOptions;
-import com.mongodb.gridfs.GridFS;
 import com.platform.util.Configuration;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 
 import java.io.*;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -40,12 +38,18 @@ public class ConnectionManager implements DBConfiguration{
     private Configuration cfg;
     private static String host = "localhost";
     private static int port = 27017;
+    private static Integer chunkSize = 358400;
 
     public ConnectionManager(Configuration exCfg)
     {
         this.cfg = exCfg;
-        host = cfg.getValue("mongo").split(":")[0];
-        port = Integer.parseInt(cfg.getValue("mongo").split(":")[1]);
+        if(cfg.getValue("mongo").contains(":")) {
+            host = cfg.getValue("mongo").split(":")[0];
+            port = Integer.parseInt(cfg.getValue("mongo").split(":")[1]);
+        }
+        else
+            host = cfg.getValue("mongo");
+        chunkSize = Integer.parseInt(cfg.getValue("chunksize"));
     }
 
 
@@ -54,9 +58,15 @@ public class ConnectionManager implements DBConfiguration{
         return false;
     }
 
-    @Override
-    public boolean testConnection(String hostname, String port) {
-        return false;
+    public static boolean testConnection(String hostname, String port) {
+
+            MongoClient mongoClient = new MongoClient(hostname, Integer.parseInt(port));
+            if(mongoClient!=null)
+            {
+                mongoClient.close();
+                return true;
+            }
+            return false;
     }
 
     @Override
@@ -81,7 +91,7 @@ public class ConnectionManager implements DBConfiguration{
             InputStream streamToUploadFrom = new FileInputStream(uploadJobFile);
 
             GridFSUploadOptions options = new GridFSUploadOptions()
-                    .chunkSizeBytes(358400)
+                    .chunkSizeBytes(chunkSize)
                     .metadata(new Document("type", "text").append("processing",false).append("processer","none").append("timeStart",new Date()).append("failed",0));
 
             ObjectId fileId = gridFSFilesBucket.uploadFromStream(uploadJobFile.getName(), streamToUploadFrom, options);
@@ -101,6 +111,20 @@ public class ConnectionManager implements DBConfiguration{
             gridFSFilesBucket.find(eq("metadata.processing", false)).forEach((Consumer<? super com.mongodb.client.gridfs.model.GridFSFile>) gridFSFile -> jobIds.add(gridFSFile.getObjectId().toString()));
         }
         return jobIds;
+    }
+
+    public static boolean updateWorker(String workerID,String jobId,String status)
+    {
+        try(MongoClient client = new MongoClient(host, port)) {
+            MongoDatabase db = client.getDatabase("TheFloow");
+            MongoCollection<Document> dic = db.getCollection("Workers");
+            Document dbExist = dic.find(eq("worker",workerID+jobId)).first();
+            Bson filter = new Document("worker",workerID+jobId);
+            Bson newValue = new Document("status", status);
+            Bson updateOperationDocument = new Document("$set", newValue);
+            dic.updateOne(filter, updateOperationDocument,new UpdateOptions().upsert(true));
+        }
+        return true;
     }
 
     public static File getJobFile(String jobId)
@@ -123,7 +147,7 @@ public class ConnectionManager implements DBConfiguration{
     public static boolean updateDictionary(Map<String,Integer> words)
     {
         try(MongoClient client = new MongoClient(host, port)) {
-            MongoDatabase db = client.getDatabase("Jobs");
+            MongoDatabase db = client.getDatabase("TheFloow");
             MongoCollection<Document> dic = db.getCollection("Dictionary");
             for(Map.Entry<String,Integer> word : words.entrySet())
             {
@@ -142,21 +166,23 @@ public class ConnectionManager implements DBConfiguration{
         return false;
     }
 
-    public static boolean setFileToProcessing(String jobIds, boolean status)
+    public static boolean setFileToProcessing(String jobIds, boolean status, String worker)
     {
         try(MongoClient client = new MongoClient(host, port)) {
             MongoDatabase db = client.getDatabase("TheFloow");
             MongoCollection<Document> dic = db.getCollection("Jobs.files");
-            Document dbExist = dic.find(eq("_id",jobIds)).first();
+            Document dbExist = dic.find(eq("_id",new ObjectId(jobIds))).first();
             if(dbExist!=null)
             {
-                Bson filter = new Document("_id", jobIds);
-                Bson newValue = new Document("metadata.processing", status);
+                Bson filter = new Document("_id", new ObjectId(jobIds));
+                Bson newValue = new Document("metadata.processing", true);
                 Bson updateOperationDocument = new Document("$set", newValue);
+                dic.updateOne(filter, updateOperationDocument);
+                newValue = new Document("metadata.processer", worker);
+                updateOperationDocument = new Document("$set", newValue);
                 dic.updateOne(filter, updateOperationDocument);
                 return true;
             }
-
         }
         return false;
     }
@@ -166,7 +192,6 @@ public class ConnectionManager implements DBConfiguration{
         try(MongoClient client = new MongoClient(host, port)) {
             GridFSBucket gridFSFilesBucket = GridFSBuckets.create(client.getDatabase("TheFloow"), "Jobs");
             gridFSFilesBucket.delete(new ObjectId(jobIds));
-
         }
         return false;
     }

@@ -1,5 +1,8 @@
 package com.platform.util;
 
+import com.platform.database.ConnectionManager;
+
+import java.io.File;
 import java.util.*;
 
 /**
@@ -12,13 +15,15 @@ import java.util.*;
  * Description: Configuration manager of the ran
  * *****************************************************
  */
-public class Configuration {
+public class Configuration{
     
     private Map<String,String> param = new HashMap<>();     //List of the parameters that are considered as settings of the ran.
     private final String[] mandatoryKeys ={"source", "mongo"};      //Mandatory keys to be mentioned at the ran or to be defaulted.
     public InformationProvider log;     //The information provider of the ran. Can be instantiated with a 4 output methods.
     
-    private static final List<String> allKeys = Arrays.asList("source", "mongo", "log");    //Supported parameters of the program.
+    private static final List<String> allKeys = Arrays.asList("source", "mongo", "log","chunksize","filesize","rezult");    //Supported parameters of the program.
+
+
 
     enum LOGMETHOD{CONSOLE,FILE,ALL,NONE}       //The information provider methods of output
 
@@ -31,37 +36,92 @@ public class Configuration {
             }
             ++i;
         }
-        validateParams();
+        initiateDefaults();
+
+        if(!validateParams()) {
+            InformationProvider.printHelp();
+            System.exit(0);
+        }
+    }
+
+    private void initiateDefaults()
+    {
+        if(!param.containsKey("source"))
+        {
+            param.put("source","null");
+        }
+        if(!param.containsKey("log"))
+        {
+            param.put("log","console");
+        }
+        if(!param.containsKey("chunksize"))
+        {
+            param.put("chunksize","358400");
+        }
+        if(!param.containsKey("filesize"))
+        {
+            param.put("filesize","10870912");
+        }
+        if(!param.containsKey("rezult"))
+        {
+            param.put("rezult","console");
+        }
     }
 
     ///Validates the configuration obtained after the initiate
-    private void validateParams()
+    private boolean validateParams()
     {
+        boolean correct = false;
         for(Map.Entry<String,String> set : param.entrySet())
         {
+            if(!allKeys.contains(set.getKey()))
+                return false;
             if(set.getKey().equals("log"))
-                verifyAndInstantiateIProvider(set.getValue());
+                correct = verifyAndInstantiateIProvider(set.getValue());
             if(set.getKey().equals("source"))
-                verifySourceInformation(set.getValue());
+                correct = verifySourceInformation(set.getValue());
             if(set.getKey().equals("mongo"))
-                verifyMongoDBInformation(set.getValue());
+                correct = verifyMongoDBInformation(set.getValue());
+            if(set.getKey().equals("chunksize"))
+                correct = verifySize(set.getValue());
+            if(set.getKey().equals("filesize"))
+                correct = verifySize(set.getValue());
+        }
+        return correct;
+    }
+
+    ///Validates that the specified chunksize / filesize is a number
+    private boolean verifySize(String value)
+    {
+        try{
+            long cSize = Integer.parseInt(value);
+            return true;
+        }
+        catch(NumberFormatException ex)
+        {
+            System.out.println("Invalid -chunksize / -filesize specified: "+ value + " - Not a number!");
+            return false;
         }
     }
     
     ///Validates and test the connection specified by user
-    private void verifyMongoDBInformation(String value)
+    private boolean verifyMongoDBInformation(String value)
     {
-        
+        String test = value;
+        if(!value.contains(":"))
+            test+=":27017";
+        return ConnectionManager.testConnection(test.split(":")[0],test.split(":")[1]);
     }
     
     ///Validates that the file specified exists
-    private void verifySourceInformation(String value)
+    private boolean verifySourceInformation(String value)
     {
-        
+        File test = new File(value);
+        return test.exists() && test.isFile();
     }
     
     ///Validates the parameter value of the log and initialize the output methods to log information
-    private void verifyAndInstantiateIProvider(String value)
+    private boolean verifyAndInstantiateIProvider(String value)
     {
         switch(value)
                 {
@@ -71,6 +131,7 @@ public class Configuration {
                     case "none": this.log = new InformationProvider(LOGMETHOD.NONE); break;
                     default: System.out.println("Invalid parameter for -log."); break;
                 }
+        return this.log!=null;
     }
 
     ///Returns the value of a setting. Returns null if the key mentioned is invalid
@@ -79,21 +140,13 @@ public class Configuration {
         return param.get(key);
     }
 
-    ///Inserts a new setting if this is not already present in the configuration
-    public boolean insert(String key,String value)
+    public Map<String,String> getParam()
     {
-        if(param.containsKey(key))
-            return false;
-        else {
-            param.put(key, value);
-            return true;
-        }
+        return this.param;
     }
 
-    ///Updates or inserts a setting 
-    public boolean update(String key, String value)
-    {
-        param.put(key,value);
-        return true;
+    public long getLongValue(String Key) {
+        return Integer.parseInt(param.get(Key));
     }
+
 }

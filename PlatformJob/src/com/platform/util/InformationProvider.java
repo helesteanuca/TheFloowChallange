@@ -4,6 +4,7 @@ import java.io.*;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Map;
 
 /**
  * *****************************************************
@@ -19,7 +20,7 @@ public class InformationProvider {
 
     ///Only used for text typing
     private static final String END_LINE = "\n";
-    private final DateFormat dateFormat = new SimpleDateFormat("[yyyy/MM/dd][HH:mm:ss]");
+    private static final DateFormat dateFormat = new SimpleDateFormat("[yyyy/MM/dd][HH:mm:ss]");
 
     ///Used for creating the log file in a relational position with the ran
     private final String workingDir = System.getProperty("user.dir");
@@ -105,7 +106,7 @@ public class InformationProvider {
     {
         timeEvent = new Date();
         String finMsg = type.getPrefix()+dateFormat.format(timeEvent)+message+ END_LINE;
-        switch (this.logMethod)
+        switch (logMethod)
         {
             case ALL: informFile(finMsg); informConsole(finMsg); break;
             case FILE: informFile(finMsg); break;
@@ -137,6 +138,25 @@ public class InformationProvider {
     public static void printHelp()
     {
         System.out.println();
+        System.out.println("------Information Provider-------");
+        System.out.println("-source\t\t\tInput file to be processed and filepath(\"/usr/Documents/\", \"C:\\Folder\\filename.ext\")\n");
+        System.out.println("-mongo\t\t\tThe ip and port adress of the mongoDB server\n\t\t\t\tlocalhost, 192.168.100.1:99882 ...\n");
+        System.out.println("-log\t\t\tThe output method that the program will have\n\t\t\t\tconsole/file/all/none (For file a file will be created with the name /logs/TheFloow.yyyyMMdd.HH.mm.log)\n");
+        System.out.println("-chunksize\t\tNumber of bytes of a chunk in mongodb for the subfiles file ex: 371234\n\t\t\t\tDefault:358400\n");
+        System.out.println("-filezie\t\tNumber of bytes of the subfiles created from the sourcefile in mongodb for the source file ex: 371234\n\t\t\t\tDefault:10870912\n");
+        System.out.println("-rezult\t\t\tThe display method of the rezults\n\t\t\t\tconsole/file/all/none (For file a file will be created with the name /rez/TheFloow.yyyyMMdd.HH.mm.rez)\n");
+        System.out.println("------Example of run-------");
+        System.out.println("java –Xmx8192m -jar PlatformJob.jar –source dump.xml –mongo localhost -log file -chunksize 358400 -filesize 10870912 -rezult file");
+    }
+
+    public void printCfg(Map<String,String> param)
+    {
+        System.out.println("------Configuration-------");
+        for(Map.Entry<String,String> entry : param.entrySet())
+        {
+            info(entry.getKey()+":\t\t"+entry.getValue());
+        }
+        System.out.println("------Configuration-------");
     }
 
 }

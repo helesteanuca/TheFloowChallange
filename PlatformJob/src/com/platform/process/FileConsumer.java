@@ -3,6 +3,7 @@ package com.platform.process;
 import com.platform.database.ConnectionManager;
 
 import java.io.*;
+import java.nio.file.Files;
 
 /**
  * Created by cahel on 5/16/2018.
@@ -10,11 +11,14 @@ import java.io.*;
 public class FileConsumer implements Runnable {
 
     private String fileName;
+    private long fileSize = 10870912;
 
-    public FileConsumer(String stfileName)
+    public FileConsumer(String stfileName, long fSize)
     {
-        this.fileName = new String(stfileName);
+        this.fileName = stfileName;
+        this.fileSize = fSize;
     }
+
     @Override
     public void run() {
         try(BufferedReader rdr = new BufferedReader(new FileReader(this.fileName))){
@@ -23,10 +27,9 @@ public class FileConsumer implements Runnable {
             int i = 0;
             File tmp = File.createTempFile(new File(fileName).getName()+"-"+i+"-",".txt");
             BufferedWriter wrt = new BufferedWriter(new FileWriter(tmp));
-
             while((line=rdr.readLine())!=null)
             {
-                if(!(tmp.length()<536870912)) {
+                if(!(tmp.length()<fileSize)) {
                     wrt.close();
                     ConnectionManager.uploadFile(tmp);
                     tmp.delete();
@@ -39,7 +42,8 @@ public class FileConsumer implements Runnable {
             }
             wrt.close();
             ConnectionManager.uploadFile(tmp);
-            tmp.delete();
+            Files.delete(tmp.toPath());
+
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
