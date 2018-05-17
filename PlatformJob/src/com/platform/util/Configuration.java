@@ -1,8 +1,6 @@
 package com.platform.util;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * *****************************************************
@@ -20,7 +18,7 @@ public class Configuration {
     private final String[] mandatoryKeys ={"source", "mongo"};      //Mandatory keys to be mentioned at the ran or to be defaulted.
     public InformationProvider log;     //The information provider of the ran. Can be instantiated with a 4 output methods.
     
-    private static final ImmutableList<String> allKeys = ImmutableList.of("source", "mongo", "log");    //Supported parameters of the program.
+    private static final List<String> allKeys = Arrays.asList("source", "mongo", "log");    //Supported parameters of the program.
 
     enum LOGMETHOD{CONSOLE,FILE,ALL,NONE}       //The information provider methods of output
 
