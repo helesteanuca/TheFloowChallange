@@ -19,17 +19,16 @@ If the file source was succesfully uploaded and there are no more jobs in the mo
  1. Stemming is one of the big accuracy drowbacks but it's time efficient for this sample. If accuracy is what you are looking for, I recommend using a lemmatization. You can add it to the project and just modify the JobConsumer (see Wiki).
 
  2. Currently I have to say that the bigger the file you want to process, the smaller the -filesize should be set. Tested with a 65GB sourcefile and a 512MB &filesize will take longer than a 100MB &filesize, also if there is a second run on another server that only has a sourcefile of 12MB then it will help the first one to finish the jobs. Also I don't recommend a smaller size than 10MB, the reason I went for gridFS is because normal collections would be too small to store.
-
-### TODO - the program could be modified in order to check the jobsize before deciding what to do. This way we can decide if a server is powerful enough to take some jobs at startup.
-## TODO - the program could be 
+ -TODO - the program could be modified in order to check the jobsize before deciding what to do. This way we can decide if a server is powerful enough to take some jobs at startup.
+ -TODO - the program could be 
 
 ## Security - mongoDB
-### TODO - the program considers that it has all the rights to create / delete / upsert / find collections and documents as he pleases.
+ -TODO - the program considers that it has all the rights to create / delete / upsert / find collections and documents as he pleases.
 
 ## Accuracy
 
-## TODO - make the results to be displayed in a proper order and saved in a proper format (currently sepparated by ";")
-## TODO - language specification as parrameter and propper lemmatization process to be set-up.
+ -TODO - make the results to be displayed in a proper order and saved in a proper format (currently sepparated by ";")
+ -TODO - language specification as parrameter and propper lemmatization process to be set-up.
 
 
 ## Parameters supported
