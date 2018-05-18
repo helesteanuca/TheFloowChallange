@@ -13,7 +13,7 @@ import java.util.List;
  * File: Stemmer
  * Version: ${EDITS}
  * *****************************************************
- * Description:
+ * Description: Basic Stemmer
  * *****************************************************
  */
 public class Stemmer {
@@ -103,17 +103,6 @@ public class Stemmer {
         }
     }
 
-   /* m() measures the number of consonant sequences between 0 and j. if c is
-      a consonant sequence and v a vowel sequence, and <..> indicates arbitrary
-      presence,
-
-         <c><v>       gives 0
-         <c>vc<v>     gives 1
-         <c>vcvc<v>   gives 2
-         <c>vcvcvc<v> gives 3
-         ....
-   */
-
     private final int m() {
         int n = 0;
         int i = 0;
@@ -156,15 +145,6 @@ public class Stemmer {
         return cons(j);
     }
 
-   /* cvc(i) is true <=> i-2,i-1,i has the form consonant - vowel - consonant
-      and also if the second c is not w,x or y. this is used when trying to
-      restore an e at the end of a short word. e.g.
-
-         cav(e), lov(e), hop(e), crim(e), but
-         snow, box, tray.
-
-   */
-
     private final boolean cvc(int i) {
         if (i < 2 || !cons(i) || cons(i - 1) || !cons(i - 2)) return false;
         {
@@ -183,8 +163,6 @@ public class Stemmer {
         return true;
     }
 
-   /* setto(s) sets (j+1),...k to the characters in the string s, readjusting
-      k. */
 
     private final void setto(String s) {
         int l = s.length();
@@ -193,33 +171,10 @@ public class Stemmer {
         k = j + l;
     }
 
-   /* r(s) is used further down. */
-
     private final void r(String s) {
         if (m() > 0) setto(s);
     }
 
-   /* step1() gets rid of plurals and -ed or -ing. e.g.
-
-          caresses  ->  caress
-          ponies    ->  poni
-          ties      ->  ti
-          caress    ->  caress
-          cats      ->  cat
-
-          feed      ->  feed
-          agreed    ->  agree
-          disabled  ->  disable
-
-          matting   ->  mat
-          mating    ->  mate
-          meeting   ->  meet
-          milling   ->  mill
-          messing   ->  mess
-
-          meetings  ->  meet
-
-   */
 
     private final void step1() {
         if (b[k] == 's') {
@@ -533,7 +488,6 @@ public class Stemmer {
                           /* to test getResultBuffer(), getResultLength() : */
                           /* u = new String(s.getResultBuffer(), 0, s.getResultLength()); */
 
-                                    System.out.print(u);
                                     listOfWords.add(u);
                                 }
                                 break;
@@ -541,14 +495,13 @@ public class Stemmer {
                         }
                     }
                     if (ch < 0) break;
-                    System.out.print((char) ch);
 
                 }
             } catch (IOException e) {
-                System.out.println("error reading " + file);
+                System.out.println("Error reading " + file);
             }
         } catch (FileNotFoundException e) {
-            System.out.println("file " + file + " not found");
+            System.out.println("File " + file + " not found");
         } catch (IOException e) {
             e.printStackTrace();
         }

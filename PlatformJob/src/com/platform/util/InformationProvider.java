@@ -1,10 +1,13 @@
 package com.platform.util;
 
+import com.platform.database.ConnectionManager;
+
 import java.io.*;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
+import java.util.function.BiConsumer;
 
 /**
  * *****************************************************
@@ -53,37 +56,46 @@ public class InformationProvider {
     public InformationProvider(Configuration.LOGMETHOD estLogMethod)
     {
         this.logMethod = estLogMethod;
+        if(logMethod == Configuration.LOGMETHOD.ALL)
+        {
+            logFile = initiateFileWriter("\\logs\\TheFloow",".log");
+            if(logFile == null) {
+                error("Problem in initiating logfile: TheFloow. Defaulted to console output!");
+                logMethod = Configuration.LOGMETHOD.CONSOLE;
+            }
+        }
     }
 
     ///Constructor with a log file output
     public InformationProvider(String fileName)
     {
-        boolean succLog = initiateLogFileWriter(fileName);
-        if(!succLog) {
+        logFile = initiateFileWriter("\\logs\\"+fileName,".log");
+        if(logFile == null) {
             error("Problem in initiating logfile: " + fileName + ". Defaulted to console output!");
             logMethod = Configuration.LOGMETHOD.CONSOLE;
         }
-        else
+        else {
+            logMethod = Configuration.LOGMETHOD.FILE;
             info("Successful initiated logfile");
+        }
 
     }
 
-    private boolean initiateLogFileWriter(String fileName)
+    private BufferedWriter initiateFileWriter(String fileName,String ext)
     {
         timeEvent = new Date();
         DateFormat aod = new SimpleDateFormat("yyyyMMdd.HH.mm");
         try{
-            File logF = new File(workingDir+"/logs/"+fileName + aod.format(timeEvent)+".log");
+            File logF = new File(workingDir+fileName + aod.format(timeEvent)+ext);
             if(!logF.exists() && logF.createNewFile()) {
-                logFile = new BufferedWriter(new PrintWriter(logF));
-                return true;
+                return new BufferedWriter(new PrintWriter(logF));
             }
-            return false;
+            return null;
         }
         catch(IOException ex)
         {
-            error("Failed to create logfile at this location: "+workingDir+"/logs/fileName."+aod.format(timeEvent)+".log");
-            return false;
+            error("Failed to create logfile at this location: "+workingDir+fileName+aod.format(timeEvent)+ext);
+            return null;
         }
     }
 
@@ -144,19 +156,54 @@ public class InformationProvider {
         System.out.println("-log\t\t\tThe output method that the program will have\n\t\t\t\tconsole/file/all/none (For file a file will be created with the name /logs/TheFloow.yyyyMMdd.HH.mm.log)\n");
         System.out.println("-chunksize\t\tNumber of bytes of a chunk in mongodb for the subfiles file ex: 371234\n\t\t\t\tDefault:358400\n");
         System.out.println("-filezie\t\tNumber of bytes of the subfiles created from the sourcefile in mongodb for the source file ex: 371234\n\t\t\t\tDefault:10870912\n");
-        System.out.println("-rezult\t\t\tThe display method of the rezults\n\t\t\t\tconsole/file/all/none (For file a file will be created with the name /rez/TheFloow.yyyyMMdd.HH.mm.rez)\n");
+        System.out.println("-rezult\t\t\tThe display method of the rezults\n\t\t\t\tconsole/file/all/none (For file a file will be created with the name /res/TheFloow.yyyyMMdd.HH.mm.rez)\n");
         System.out.println("------Example of run-------");
         System.out.println("java –Xmx8192m -jar PlatformJob.jar –source dump.xml –mongo localhost -log file -chunksize 358400 -filesize 10870912 -rezult file");
     }
 
     public void printCfg(Map<String,String> param)
     {
-        System.out.println("------Configuration-------");
-        for(Map.Entry<String,String> entry : param.entrySet())
-        {
-            info(entry.getKey()+":\t\t"+entry.getValue());
+        info("------Configuration-------");
+        param.forEach((key,value) -> info(key+":\t\t"+value));
+        info("------Configuration-------");
+    }
+
+
+    public void printResults(Map<String,String> res)
+    {
+        BufferedWriter rezfile = initiateFileWriter("\\res\\TheFloowResult",".rez");
+        if(rezfile == null) {
+            error("Problem in initiating result file.");
+            res.forEach((key, value) -> {
+                info(key + ";" + value);
+            });
         }
-        System.out.println("------Configuration-------");
+        else {
+            res.forEach((key, value) -> {
+                try {
+                    rezfile.write(key + ";" + value + "\n");
+                } catch (IOException e) {
+                    error("Error writing result to file.");
+                }
+            });
+            info("Successful printed results.");
+            try {
+                rezfile.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+    }
+
+    public void close()
+    {
+        try {
+            if(logFile != null)
+                logFile.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 }

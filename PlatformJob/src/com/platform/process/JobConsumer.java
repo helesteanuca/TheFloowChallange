@@ -2,6 +2,8 @@ package com.platform.process;
 
 import com.platform.database.ConnectionManager;
 import com.platform.process.word.Stemmer;
+import com.platform.util.Configuration;
+import com.platform.util.InformationProvider;
 
 import java.io.*;
 import java.util.HashMap;
@@ -9,16 +11,28 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Created by cahel on 5/16/2018.
+ * *****************************************************
+ * Project: TheFloow
+ * Date: 16/05/2018
+ * File: JobConsumer
+ * Version: 9
+ * *****************************************************
+ * Description: The Job consumer consumes gridfs files, processes them with the Stemmer
+ * *****************************************************
  */
 public class JobConsumer implements Runnable {
     private String jobId;
     private String machineId;
     private Map<String,Integer> wordsInDocs = new HashMap<>();
     public boolean Success = false;
+    private InformationProvider ilog;
+    private ConnectionManager dbMng;
+    private static final String TAG = "[JOB-CONSUMER]";
 
-    public JobConsumer(String idJob, String serverId)
+    public JobConsumer(String idJob, String serverId, Configuration exCfg)
     {
+        this.ilog = exCfg.log;
+        this.dbMng = new ConnectionManager(exCfg);
         this.jobId = new String(idJob);
         this.machineId = new String(serverId);
     }
@@ -26,32 +40,41 @@ public class JobConsumer implements Runnable {
     @Override
     public void run() {
 
-        File jobFile = ConnectionManager.getJobFile(jobId);
-        ConnectionManager.updateWorker(machineId,jobId,"Alive");
+        File jobFile = dbMng.getJobFile(jobId);
+        dbMng.updateWorker(machineId,jobId,"Alive");
+        ilog.info(TAG+"Worker: "+machineId+"-j-"+jobId+" - Status: Alive.");
         if(jobFile!=null) {
-            ConnectionManager.setFileToProcessing(jobId,true,machineId);
-            ConnectionManager.updateWorker(machineId,jobId,"Working");
+
+            dbMng.setFileToProcessing(jobId,true,machineId);
+            dbMng.updateWorker(machineId,jobId,"Working");
+            ilog.info(TAG+"Worker: "+machineId+"-j-"+jobId+" - Status: Working.");
+
             Stemmer fileSteam = new Stemmer(jobFile.getAbsolutePath());
             List<String> listOfWords = fileSteam.getListOfWords();
+
             for (String word : listOfWords) {
                 if (null == wordsInDocs.get(word))
                     wordsInDocs.put(word, 1);
                 else
                     wordsInDocs.put(word, wordsInDocs.get(word) + 1);
             }
+
             if(!wordsInDocs.isEmpty()) {
-                ConnectionManager.updateDictionary(wordsInDocs);
-                ConnectionManager.deleteFileAndChunks(this.jobId);
-                ConnectionManager.updateWorker(machineId,jobId,"Success");
+                ilog.info(TAG+"Worker: "+machineId+"-j-"+jobId+" - Status: Uploading.");
+                dbMng.updateDictionary(wordsInDocs);
+                dbMng.updateWorker(machineId,jobId,"Uploading");
+                ilog.info(TAG+"Worker: "+machineId+"-j-"+jobId+" - Status: Uploaded/updated "+wordsInDocs.size()+" words.");
+                dbMng.deleteFileAndChunks(this.jobId);
+                dbMng.updateWorker(machineId,jobId,"Success/Finished");
+                ilog.info(TAG+"Worker: "+machineId+"-j-"+jobId+" - Status: Success/Finished.");
                 Success = true;
-                notify();
             }
             else
             {
-                ConnectionManager.updateWorker(machineId,jobId,"Failed");
+                dbMng.updateWorker(machineId,jobId,"Failed/Finished");
+                ilog.warn(TAG+"Worker: "+machineId+"-j-"+jobId+" - Status: Failed/Finished.");
             }
-
         }
-        ConnectionManager.updateWorker(machineId,jobId,"Finished");
+        notify();
     }
 }

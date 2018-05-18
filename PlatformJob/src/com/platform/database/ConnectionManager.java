@@ -8,16 +8,13 @@ import com.mongodb.client.gridfs.GridFSBuckets;
 import com.mongodb.client.gridfs.model.GridFSUploadOptions;
 import com.mongodb.client.model.UpdateOptions;
 import com.platform.util.Configuration;
+import com.platform.util.InformationProvider;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 
 import java.io.*;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Consumer;
 
 
@@ -28,17 +25,19 @@ import static com.mongodb.client.model.Filters.eq;
  * Project: TheFloow
  * Date: 15/05/2018
  * File: ConnectionManager
- * Version: 3
+ * Version: 7
  * *****************************************************
- * Description:
+ * Description: The mongoDB handler
  * *****************************************************
  */
-public class ConnectionManager implements DBConfiguration{
+public class ConnectionManager{
 
     private Configuration cfg;
     private static String host = "localhost";
     private static int port = 27017;
     private static Integer chunkSize = 358400;
+    private InformationProvider ilog;
+    private static final String TAG = "[MONGODB-JOBS]";
 
     public ConnectionManager(Configuration exCfg)
     {
@@ -52,40 +51,19 @@ public class ConnectionManager implements DBConfiguration{
         chunkSize = Integer.parseInt(cfg.getValue("chunksize"));
     }
 
-
-    @Override
-    public boolean prepareCollections() {
+    public static boolean testConnection(String hostname, String port) {
+        MongoClient mongoClient = new MongoClient(hostname, Integer.parseInt(port));
+        if(mongoClient!=null)
+        {
+            mongoClient.close();
+            return true;
+        }
         return false;
     }
 
-    public static boolean testConnection(String hostname, String port) {
-
-            MongoClient mongoClient = new MongoClient(hostname, Integer.parseInt(port));
-            if(mongoClient!=null)
-            {
-                mongoClient.close();
-                return true;
-            }
-            return false;
-    }
-
-    @Override
-    public boolean prepareDataBase() {
-
-        try (MongoClient mongoClient = new MongoClient(host, port)) {
-
-            MongoDatabase db = mongoClient.getDatabase("TheFloow");
-
-            List<String> collectionNames = new ArrayList<>();
-            db.listCollectionNames().forEach((Consumer<String>)collectionNames::add);
-            if(!collectionNames.contains("Dictionary"))
-                db.createCollection("Dictionary");
-            return true;
-        }
-    }
-
-    public static boolean uploadFile(File uploadJobFile)
+    public void uploadFile(File uploadJobFile)
     {
+        cfg.log.info(TAG+"Uploading file "+uploadJobFile+"...");
         try(MongoClient client = new MongoClient(host, port)){
             GridFSBucket gridFSFilesBucket = GridFSBuckets.create(client.getDatabase("TheFloow"), "Jobs");
             InputStream streamToUploadFrom = new FileInputStream(uploadJobFile);
@@ -94,12 +72,11 @@ public class ConnectionManager implements DBConfiguration{
                     .chunkSizeBytes(chunkSize)
                     .metadata(new Document("type", "text").append("processing",false).append("processer","none").append("timeStart",new Date()).append("failed",0));
 
-            ObjectId fileId = gridFSFilesBucket.uploadFromStream(uploadJobFile.getName(), streamToUploadFrom, options);
-            System.out.println(fileId);
-            return true;
+            gridFSFilesBucket.uploadFromStream(uploadJobFile.getName(), streamToUploadFrom, options);
+            client.close();
+            cfg.log.info(TAG+"Uploaded file "+uploadJobFile+" successfully.");
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            return false;
+            cfg.log.error(TAG+"File not found for upload "+uploadJobFile);
         }
     }
 
@@ -109,43 +86,50 @@ public class ConnectionManager implements DBConfiguration{
         try(MongoClient client = new MongoClient(host, port)){
             GridFSBucket gridFSFilesBucket = GridFSBuckets.create(client.getDatabase("TheFloow"), "Jobs");
             gridFSFilesBucket.find(eq("metadata.processing", false)).forEach((Consumer<? super com.mongodb.client.gridfs.model.GridFSFile>) gridFSFile -> jobIds.add(gridFSFile.getObjectId().toString()));
+            client.close();
         }
         return jobIds;
     }
 
-    public static boolean updateWorker(String workerID,String jobId,String status)
+    public void updateWorker(String workerID,String jobId,String status)
     {
+        cfg.log.info(TAG+"Updating database worker "+workerID+"-j-"+jobId+"...");
         try(MongoClient client = new MongoClient(host, port)) {
             MongoDatabase db = client.getDatabase("TheFloow");
             MongoCollection<Document> dic = db.getCollection("Workers");
-            Document dbExist = dic.find(eq("worker",workerID+jobId)).first();
-            Bson filter = new Document("worker",workerID+jobId);
+            Document dbExist = dic.find(eq("worker",workerID+"-j-"+jobId)).first();
+            Bson filter = new Document("worker",workerID+"-j-"+jobId);
             Bson newValue = new Document("status", status);
             Bson updateOperationDocument = new Document("$set", newValue);
             dic.updateOne(filter, updateOperationDocument,new UpdateOptions().upsert(true));
+            cfg.log.info(TAG+"Updated database worker "+workerID+"-j-"+jobId+".");
+            client.close();
         }
-        return true;
     }
 
-    public static File getJobFile(String jobId)
+    public File getJobFile(String jobId)
     {
+        cfg.log.info(TAG+"Retrieving job "+jobId+"...");
         try(MongoClient client = new MongoClient(host, port)) {
             GridFSBucket gridFSFilesBucket = GridFSBuckets.create(client.getDatabase("TheFloow"), "Jobs");
             File tmpJob = File.createTempFile("jobId","txt");
             FileOutputStream streamToDownloadTo = new FileOutputStream(tmpJob);
             gridFSFilesBucket.downloadToStream(new ObjectId(jobId), streamToDownloadTo);
             streamToDownloadTo.close();
+            client.close();
+            cfg.log.info(TAG+"Retrieved job "+jobId+".");
             return tmpJob;
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            cfg.log.error(TAG+"Job failed to retrieve as the temporary file cannot be created."+"\n"+e);
         } catch (IOException e) {
-            e.printStackTrace();
+            cfg.log.error(TAG+"Job failed to retrieve as there is a problem writing the temporary file."+"\n"+e);
         }
         return null;
     }
 
-    public static boolean updateDictionary(Map<String,Integer> words)
+    public void updateDictionary(Map<String,Integer> words)
     {
+        cfg.log.info(TAG+"Uploading "+words.size()+"...");
         try(MongoClient client = new MongoClient(host, port)) {
             MongoDatabase db = client.getDatabase("TheFloow");
             MongoCollection<Document> dic = db.getCollection("Dictionary");
@@ -161,13 +145,17 @@ public class ConnectionManager implements DBConfiguration{
                 Bson newValue = new Document("count", count);
                 Bson updateOperationDocument = new Document("$set", newValue);
                 dic.updateOne(filter, updateOperationDocument,new UpdateOptions().upsert(true));
+
+
             }
+            cfg.log.info(TAG+"Uploaded "+words.size()+".");
+            client.close();
         }
-        return false;
     }
 
-    public static boolean setFileToProcessing(String jobIds, boolean status, String worker)
+    public void setFileToProcessing(String jobIds, boolean status, String worker)
     {
+        cfg.log.info(TAG+"Setting job "+jobIds+" as in process...");
         try(MongoClient client = new MongoClient(host, port)) {
             MongoDatabase db = client.getDatabase("TheFloow");
             MongoCollection<Document> dic = db.getCollection("Jobs.files");
@@ -181,18 +169,35 @@ public class ConnectionManager implements DBConfiguration{
                 newValue = new Document("metadata.processer", worker);
                 updateOperationDocument = new Document("$set", newValue);
                 dic.updateOne(filter, updateOperationDocument);
-                return true;
             }
+            client.close();
+            cfg.log.info(TAG+"Just set job "+jobIds+" as in process.");
         }
-        return false;
     }
 
-    public static boolean deleteFileAndChunks(String jobIds)
+    public void deleteFileAndChunks(String jobIds)
     {
+        cfg.log.info(TAG+"Deleting "+jobIds+"...");
         try(MongoClient client = new MongoClient(host, port)) {
             GridFSBucket gridFSFilesBucket = GridFSBuckets.create(client.getDatabase("TheFloow"), "Jobs");
             gridFSFilesBucket.delete(new ObjectId(jobIds));
+            client.close();
+            cfg.log.info(TAG+"Deleted "+jobIds+".");
         }
-        return false;
+    }
+
+    public Map<String,String> retrieveFinalRezults()
+    {
+        Map<String,String> outPut = new HashMap<>();
+        try(MongoClient client = new MongoClient(host, port)) {
+            MongoDatabase db = client.getDatabase("TheFloow");
+            MongoCollection<Document> dic = db.getCollection("Dictionary");
+            Bson filter = new Document("count", -1);
+            dic.find().sort(filter).limit(cfg.getResultSize()).forEach((Consumer<? super Document>) words -> outPut.put(words.getString("word"),words.get("count").toString()));
+            filter = new Document("count", +1);
+            dic.find().sort(filter).limit(cfg.getResultSize()).forEach((Consumer<? super Document>) words -> outPut.put(words.getString("word"),words.get("count").toString()));
+            return outPut;
+        }
+
     }
 }

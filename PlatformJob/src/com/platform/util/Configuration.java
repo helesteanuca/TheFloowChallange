@@ -21,11 +21,12 @@ public class Configuration{
     private final String[] mandatoryKeys ={"source", "mongo"};      //Mandatory keys to be mentioned at the ran or to be defaulted.
     public InformationProvider log;     //The information provider of the ran. Can be instantiated with a 4 output methods.
     
-    private static final List<String> allKeys = Arrays.asList("source", "mongo", "log","chunksize","filesize","rezult");    //Supported parameters of the program.
+    private static final List<String> allKeys = Arrays.asList("source", "mongo", "log","chunksize","filesize","result","resultSize");    //Supported parameters of the program.
 
 
 
     enum LOGMETHOD{CONSOLE,FILE,ALL,NONE}       //The information provider methods of output
+    private int resultSize = 10;
 
     public Configuration(String[] listParam)
     {
@@ -46,6 +47,7 @@ public class Configuration{
 
     private void initiateDefaults()
     {
+        log = new InformationProvider(LOGMETHOD.CONSOLE);
         if(!param.containsKey("source"))
         {
             param.put("source","null");
@@ -62,9 +64,9 @@ public class Configuration{
         {
             param.put("filesize","10870912");
         }
-        if(!param.containsKey("rezult"))
+        if(!param.containsKey("result"))
         {
-            param.put("rezult","console");
+            param.put("result","console");
         }
     }
 
@@ -86,8 +88,15 @@ public class Configuration{
                 correct = verifySize(set.getValue());
             if(set.getKey().equals("filesize"))
                 correct = verifySize(set.getValue());
+            if(set.getKey().equals("resultSize"))
+                resultSize = Integer.parseInt(set.getValue());
         }
         return correct;
+    }
+
+    public int getResultSize()
+    {
+        return this.resultSize;
     }
 
     ///Validates that the specified chunksize / filesize is a number
@@ -147,6 +156,11 @@ public class Configuration{
 
     public long getLongValue(String Key) {
         return Integer.parseInt(param.get(Key));
+    }
+
+    public void close()
+    {
+        log.close();
     }
 
 }
