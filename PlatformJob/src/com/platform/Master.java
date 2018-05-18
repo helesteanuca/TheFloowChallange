@@ -27,7 +27,7 @@ public class Master {
     private static volatile List<String> jobIds = ConnectionManager.getAvailableJobs();
     private static String machineID = getMachineID();
     private static int jobSeeker = 0;
-    private static final long SLEEPING_TIME = 10000;
+    private static final long SLEEPING_TIME = 300000;
     private static final int RETRY_ATTEMPTS = 10;
     private static final String TAG = "[MASTER]";
 
