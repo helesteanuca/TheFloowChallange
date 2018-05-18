@@ -4,7 +4,7 @@ A program that allows it's user to break a file into smaller files and transform
 
 # Detailed
 
-The program may take an argument called "-source" that will start being parsed. If the file is bigger than the default "-filesize" than it will start creating a temporary file and will copy the first &filesize bytes from the source and upload it to the mongoDB gridFS with a modified metadata and with a chunkSize specified or default (see below). This process of reading and uploading is done on a secondary thread.
+The program can take an argument called "-source" that will start being parsed. If the file is bigger than the default "-filesize" than it will start creating a temporary file and will copy the first &filesize bytes from the source and upload it to the mongoDB gridFS with a modified metadata and with a chunkSize specified or default (see below). This process of reading and uploading is done on a secondary thread.
 
 The main thread, after sending the file to be fragmented and uploaded interogates the mongoDB gridFS files for those files of which metadata has specified metadata.proccessed = false. If the number of files respecting this condition is 0, the thread sleeps for 2.5 minutes and repets the interogation up to 10 times. If a job file becomes present, the job consumer is called and the main thread will wait for it's finish state.
 
@@ -18,9 +18,8 @@ If the file source was succesfully uploaded and there are no more jobs in the mo
 
  1. Stemming is one of the big accuracy drowbacks but it's time efficient for this sample. If accuracy is what you are looking for, I recommend using a lemmatization. You can add it to the project and just modify the JobConsumer (see Wiki).
 
- 2. Currently I have to say that the bigger the file you want to process, the smaller the -filesize should be set. Tested with a 65GB sourcefile and a 512MB &filesize will take longer than a 100MB &filesize, also if there is a second run on another server that only has a sourcefile of 12MB then it will help the first one to finish the jobs. Also I don't recommend a smaller size than 10MB, the reason I went for gridFS is because normal collections would be too small to store.
+ 2. Currently I have to say that the bigger the file you want to process, the smaller the -filesize should be set. Tested with a 65GB sourcefile and a 512MB &filesize will take longer than a 100MB &filesize, also if there is a second run on another server that only has a sourcefile of 12MB then it will help the first one to finish the jobs and if no source is specified, the program will continue to process jobs as long as they are present in the mongoDB. Also I don't recommend a smaller size than 10MB, the reason I went for gridFS is because normal collections would be too small to store.
  -TODO - the program could be modified in order to check the jobsize before deciding what to do. This way we can decide if a server is powerful enough to take some jobs at startup.
- -TODO - the program could be 
 
 ## Security - mongoDB
  -TODO - the program considers that it has all the rights to create / delete / upsert / find collections and documents as he pleases.
