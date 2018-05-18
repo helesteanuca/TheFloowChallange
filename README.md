@@ -1,6 +1,6 @@
 # Summary
 
-A program that allows it's user to break a file into smaller files and transforms them into future jobs to be processed (stemmed) and count the number of apparitions of a certain word.
+A program that allows it's user to break a file into smaller files and transforms them into future jobs to be processed (stemmed) and count the number of apparitions of a certain word and that can be ran and divide it's job across servers that are connected to the same mongoDB.
 
 # Detailed
 
