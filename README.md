@@ -18,7 +18,11 @@ If the file source was succesfully uploaded and there are no more jobs in the mo
 
  1. Stemming is one of the big accuracy drowbacks but it's time efficient for this sample. If accuracy is what you are looking for, I recommend using a lemmatization. You can add it to the project and just modify the JobConsumer (see Wiki).
 
- 2. Currently I have to say that the bigger the file you want to process, the smaller the -filesize should be set. Tested with a 65GB sourcefile and a 512MB &filesize will take longer than a 100MB &filesize, also if there is a second run on another server that only has a sourcefile of 12MB then it will help the first one to finish the jobs and if no source is specified, the program will continue to process jobs as long as they are present in the mongoDB. Also I don't recommend a smaller size than 10MB, the reason I went for gridFS is because normal collections would be too small to store.
+ 2. Currently I have to say that the bigger the file you want to process, the smaller the -filesize should be set. Tested with a 65GB sourcefile and a 512MB &filesize will take longer than a 100MB &filesize, also if there is a second run on another server that only has a sourcefile of 12MB then it will help the first one to finish the jobs and if no source is specified, the program will continue to process jobs as long as they are present in the mongoDB. Also a smaller size than 10MB would make the use of gridfs irrelevant and the need of a more proper indexation will appear.
+ 
+ 3. The current indexations are set manually in mongoDB on the Dictionary.count, unique Dictionary.word and unique Job.files.id.
+ 
+ 
  -TODO - the program could be modified in order to check the jobsize before deciding what to do. This way we can decide if a server is powerful enough to take some jobs at startup.
 
 ## Security - mongoDB
